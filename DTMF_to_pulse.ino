@@ -7,9 +7,10 @@ https://www.patreon.com/posts/im-aware-this-66205770
 https://microcontrollerslab.com/mt8870-dtmf-decoder-module-pinout-interfacing-with-arduino-features/#Pin_Configuration
 
 */
+#include <Arduino.h>
 
-#define PULSE_PIN D7
-#define MT8870_STD D2
+#define PULSE_PIN 7
+#define MT8870_STD 2
 #define MAX_PULSES 100
 
 const int PULSE_LEN_MS = 50;
@@ -37,6 +38,8 @@ void pulse(int);
 
 
 void setup() {
+  Serial.begin(115200);
+
   // Attach interrupt to the MT8870 StD pin
   attachInterrupt(digitalPinToInterrupt(stq_pin), dtmf_interrupt, FALLING);
 
@@ -90,6 +93,7 @@ void pulse_exchange(char buf[], int idx) {
         int count = buf[idx] - '0';
         pulse(count);
         break;
+    }
   }
 }
 
@@ -125,6 +129,11 @@ void dtmf_interrupt() {
   last_dialed_time = 1;
 }
 
+
+/**
+ * Returns character of the button pressed, 0-9, #, *.
+ * Returns 'E' for error.
+ */
 char read_dtmf_inputs() {
   Serial.println("Hello, I'm in read_dtmf_inputs()!");
   Serial.println();
@@ -185,5 +194,6 @@ char read_dtmf_inputs() {
       return '#';
       break;
   }
-}
 
+  return 'E';
+}
