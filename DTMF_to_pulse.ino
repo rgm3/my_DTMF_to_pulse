@@ -6,7 +6,7 @@ https://www.patreon.com/posts/im-aware-this-66205770
 
 */
 
-#define PULSE_PIN A7
+#define PULSE_PIN D7
 #define MAX_PULSES 100
 
 const int PULSE_LEN_MS = 50;
@@ -16,16 +16,28 @@ const int DIAL_DONE_TIMEOUT_MS = 2000;
 char g_dial_buffer[DIAL_BUFFER_LEN] = "";
 
 int buffer_position = 0;
-unsigned long last_dialed_time = 0;
+
+volatile unsigned long last_dialed_time = 0;
 
 
 void setup() {
-  // setPin for DTMF chip as inputs
-  // initialize interrupt service routine for change detection of DTMF?
+
+  // Set inputs for DTMF on digital pins 3, 4, 5, and 6
+  // TODO: use an existing library for the DTMF converter?
+  attachInterrupt(digitalPinToInterrupt(D3), dtmf_interrupt);
+  attachInterrupt(digitalPinToInterrupt(D4), dtmf_interrupt);
+  attachInterrupt(digitalPinToInterrupt(D5), dtmf_interrupt);
+  attachInterrupt(digitalPinToInterrupt(D6), dtmf_interrupt);
+
+  // On bootup set exchange pin high
+  hang_up();
 }
 
 void loop() {
   now = time.millis();
+  if (last_dialed_time == 1) {
+    last_dialed_time = now;
+  }
 
   // If enough time has elapsed since last DTMF, send buffer via pulses
   if ((now - last_dialed_time) > DIAL_DONE_TIOMEOUT_MS) {
@@ -48,6 +60,8 @@ void pulse_exchange(char[] buf, int idx) {
         if (count > 0 && count < MAX_PULSES)
           pulse(count);
   }
+
+
 }
 
 void pulse(int num) {
@@ -57,4 +71,17 @@ void pulse(int num) {
     digitalWrite(PULSE_PIN,LOW);
     delay(PULSE_LEN_MS);
   }
+}
+
+void zero_buffer() {
+  // todo
+}
+
+void hang_up(){
+  digitalWrite(PULSE_PIN, HIGH);
+}
+
+void dtmf_interrupt() {
+  // Set flag, avoid function calls in interrupt
+  last_dialed_time = 1;
 }
