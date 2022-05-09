@@ -28,6 +28,14 @@ volatile unsigned long last_dialed_time = 0;
 #define q3_pin 6
 #define q4_pin 7
 
+// Declare functions
+void dtmf_interrupt();
+void hang_up();
+char read_dtmf_inputs();
+void clear_buffer();
+void pulse(int);
+
+
 void setup() {
   // Attach interrupt to the MT8870 StD pin
   attachInterrupt(digitalPinToInterrupt(stq_pin), dtmf_interrupt, FALLING);
@@ -44,63 +52,55 @@ void setup() {
 }
 
 void loop() {
-  now = time.millis();
+  unsigned long now = millis();
 
   if (last_dialed_time == 1) {
     last_dialed_time = now;
 
     // DTMF character ready
-    buf[buffer_position] = read_dtmf_inputs();
+    g_dial_buffer[buffer_position] = read_dtmf_inputs();
     buffer_position++;
   }
 
   // If enough time has elapsed since last DTMF, send buffer via pulses
-  if ((now - last_dialed_time) > DIAL_DONE_TIOMEOUT_MS) {
+  if ((now - last_dialed_time) > DIAL_DONE_TIMEOUT_MS) {
     pulse_exchange(g_dial_buffer, buffer_position);
     
     buffer_position = 0;
     clear_buffer();
   }
-
 }
 
-void pulse_exchange(char[] buf, int idx) {
+
+void pulse_exchange(char buf[], int idx) {
   for(int i = 0; i < idx; i++) {
-    switch buf[idx]:
+    switch (buf[idx]) {
+      case '#':
+        // TODO: how to pulse dial this
+        pulse(11);
+        break;
+      case '*':
+        // TODO: how to pulse dial this
+        pulse(12);        
+        break;
       case '0':
         pulse(10);
-      case '#':
-        // something
-      case '*':
-        // something
+        break;
       default:
-        int count = atoi(buf[idx]);
-        if (count > 0 && count < MAX_PULSES)
-          pulse(count);
+        int count = buf[idx] - '0';
+        pulse(count);
+        break;
   }
-
-
-}
-
-char read_mt8870() {
-    // TODO: avoid hard-coded values
-    uint8_t bit_0 = digitalRead(3);
-    uint8_t bit_1 = digitalRead(4);
-    uint8_t bit_2 = digitalRead(5);
-    uint8_t bit_3 = digitalRead(6);
-
-    int output = bit_0 && bit_1 && bit_2 && bit_3;
-    switch output{
-      case 0:
-        return '0';
-      case 1:
-        return '1';
-      // ...        
-    }
-
 }
 
 void pulse(int num) {
+  if (num <= 0 || num > MAX_PULSES) {
+    Serial.print("I don't want to pulse ");
+    Serial.print(num);
+    Serial.print(" times. (Out of Range)");
+    return;
+  }
+
   for (int i = 0; i < num; i++) {
     digitalWrite(PULSE_PIN, HIGH);
     delay(PULSE_LEN_MS);
@@ -113,7 +113,7 @@ void clear_buffer() {
   for (int i = 0; i < DIAL_BUFFER_LEN; i++) {
     g_dial_buffer[i] = 0;
   }
-  g_dial_buffer[0] = '\0';  
+  g_dial_buffer[0] = '\0';
 }
 
 void hang_up(){
@@ -125,8 +125,7 @@ void dtmf_interrupt() {
   last_dialed_time = 1;
 }
 
-char read_dtmf_inputs()
-{
+char read_dtmf_inputs() {
   Serial.println("Hello, I'm in read_dtmf_inputs()!");
   Serial.println();
 
@@ -187,3 +186,4 @@ char read_dtmf_inputs()
       break;
   }
 }
+
